@@ -39,7 +39,7 @@ k exec temp -- ls /donnees /tmp
 
 Avant le redémarrage : `/donnees` contient `fichier.txt` et `/tmp` contient `ephemere.txt`.
 
-![avant demarrage](tp5.1-emptyDir)
+![avant demarrage](captures/tp5.1-emptyDir.png)
 
 Redémarrage du conteneur :
 
@@ -52,7 +52,7 @@ k exec temp -- ls /donnees /tmp
 
 Résultat : `RESTARTS` passe à 1. `/donnees` contient toujours `fichier.txt`, mais `/tmp` est vide (`ephemere.txt` a disparu).
 
-![avant demarrage](tp5.1-emptyDir-apres-demmarage)
+![aprés demarrage](captures/tp5.1-emptyDir-apres-demmarage.png)
 
 Suppression puis recréation du Pod :
 
