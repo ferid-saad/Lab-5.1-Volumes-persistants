@@ -18,7 +18,7 @@
 | Emplacement | Survit au redémarrage du conteneur | Survit à la suppression du Pod |
 |---|---|---|
 | Système de fichiers du conteneur | Non | Non |
-| emptyDir | _à compléter (étape 2)_ | _à compléter (étape 2)_ |
+| emptyDir | Oui | Non |
 | PVC | _à compléter (étapes 4 et 5)_ | _à compléter (étape 5)_ |
 
 ## Étapes
@@ -27,7 +27,51 @@
 _à compléter_
 
 ### Étape 2 : Perte de données avec emptyDir
-_à compléter_
+Pod `temp` (nginx:1.26-alpine) avec un volume `emptyDir` monté sur `/donnees` (fichier `temp.yaml`).
+
+```bash
+k apply -f temp.yaml
+k wait --for=condition=Ready pod/temp --timeout=60s
+k exec temp -- sh -c 'echo "dans emptyDir" > /donnees/fichier.txt; echo "dans le conteneur" > /tmp/ephemere.txt'
+k exec temp -- ls /donnees /tmp
+```
+
+Avant le redémarrage : `/donnees` contient `fichier.txt` et `/tmp` contient `ephemere.txt`.
+
+Redémarrage du conteneur :
+
+```bash
+k exec temp -- nginx -s stop
+sleep 10
+k get pod temp
+k exec temp -- ls /donnees /tmp
+```
+
+Résultat : `RESTARTS` passe à 1. `/donnees` contient toujours `fichier.txt`, mais `/tmp` est vide (`ephemere.txt` a disparu).
+
+Suppression puis recréation du Pod :
+
+```bash
+k delete pod temp
+k apply -f temp.yaml
+k wait --for=condition=Ready pod/temp --timeout=120s
+k exec temp -- ls /donnees
+k delete pod temp
+```
+
+Résultat : `/donnees` est vide.
+
+Conclusion :
+
+- Un emptyDir est lié au **Pod** : il survit au redémarrage du conteneur, mais disparaît avec le Pod.
+- Le système de fichiers du conteneur est perdu dès que le conteneur redémarre.
+
+Incident : pendant cette étape, le master a été saturé (`soft lockup`, `TLS handshake timeout`), ce qui a retardé les commandes. Après stabilisation, la suppression et la recréation du Pod ont été refaites normalement.
+
+Points de contrôle :
+
+- [x] Après le redémarrage du conteneur, `fichier.txt` existait toujours et `ephemere.txt` avait disparu
+- [x] Après la suppression du Pod, `/donnees` était vide
 
 ### Étape 3 : Créer un PVC
 _à compléter_
