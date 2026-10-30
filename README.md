@@ -79,7 +79,7 @@ Points de contrôle :
 - [x] Après la suppression du Pod, `/donnees` était vide
 
 ### Étape 3 : Créer un PVC
-_à compléter_
+
 
 ### Étape 4 : Utiliser le PVC dans un Pod
 _à compléter_
