@@ -23,7 +23,8 @@
 
 ## Étapes
 
-### Étape 1 : Namespace et StorageClass
+###k exec temp -- sh -c 'echo "dans emptyDir" > /donnees/fichier.txt; echo "dans le conteneur" > /tmp/ephemere.txt'
+k exec temp -- ls /donnees /tmp Étape 1 : Namespace et StorageClass
 _à compléter_
 
 ### Étape 2 : Perte de données avec emptyDir
@@ -38,6 +39,8 @@ k exec temp -- ls /donnees /tmp
 
 Avant le redémarrage : `/donnees` contient `fichier.txt` et `/tmp` contient `ephemere.txt`.
 
+![avant demarrage](tp5.1-emptyDir)
+
 Redémarrage du conteneur :
 
 ```bash
@@ -48,6 +51,8 @@ k exec temp -- ls /donnees /tmp
 ```
 
 Résultat : `RESTARTS` passe à 1. `/donnees` contient toujours `fichier.txt`, mais `/tmp` est vide (`ephemere.txt` a disparu).
+
+![avant demarrage](tp5.1-emptyDir-apres-demmarage)
 
 Suppression puis recréation du Pod :
 
