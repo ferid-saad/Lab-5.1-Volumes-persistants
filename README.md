@@ -79,7 +79,30 @@ Points de contrôle :
 - [x] Après la suppression du Pod, `/donnees` était vide
 
 ### Étape 3 : Créer un PVC
+Création du PVC `data` (1 Gi, `ReadWriteOnce`, StorageClass `local-path`), fichier `pvc.yaml`.
 
+```bash
+k apply -f pvc.yaml
+k get pvc,pv
+k describe pvc data | tail -n 5
+```
+
+Résultat :
+
+- Le PVC `data` est `Pending`.
+- Aucun PV n'est associé à ce PVC. Les PV visibles dans `k get pv` appartiennent à d'autres namespaces du cluster (`elearning`).
+- Les événements de `describe` indiquent que le PVC attend un premier consommateur (`WaitForFirstConsumer`).
+
+![PVC data en Pending](captures/etape3-pvc-pending.png)
+
+Explication : avec `local-path`, le `volumeBindingMode` est `WaitForFirstConsumer`. Le PV n'est créé que lorsqu'un Pod utilise le PVC, ce qui permet de le placer sur le nœud où le Pod sera planifié.
+
+Points de contrôle :
+
+- [x] `k get pvc` affiche `Pending`
+- [x] `describe` indique que le PVC attend un premier consommateur (`WaitForFirstConsumer`)
+
+![Événement WaitForFirstConsumer](captures/etape3-wait.png)
 
 ### Étape 4 : Utiliser le PVC dans un Pod
 _à compléter_
