@@ -19,8 +19,7 @@
 |---|---|---|
 | Système de fichiers du conteneur | Non | Non |
 | emptyDir | Oui | Non |
-| PVC | _à compléter (étapes 4 et 5)_ | _à compléter (étape 5)_ |
-
+| PVC | Oui | Oui |
 ## Étapes
 
 ###k exec temp -- sh -c 'echo "dans emptyDir" > /donnees/fichier.txt; echo "dans le conteneur" > /tmp/ephemere.txt'
@@ -155,7 +154,34 @@ Points de contrôle :
 - [x] La page est servie par nginx, et `index.html` existe dans le dossier du nœud
 
 ### Étape 5 : Prouver la persistance
-_à compléter_
+Suppression du Pod `app`, puis recréation avec le même `app.yaml` (le PVC `data` n'est pas touché).
+
+```bash
+k delete pod app
+k get pvc
+k apply -f app.yaml
+k wait --for=condition=Ready pod/app --timeout=120s
+k get pod app -o wide
+k exec app -- wget -qO- http://localhost
+```
+
+Résultat :
+
+- Pendant que le Pod n'existe plus, le PVC `data` reste `Bound` : le PVC et le PV vivent indépendamment du Pod.
+- Le nouveau Pod affiche `Bonjour, donnee persistante` : la donnée a survécu à la suppression du Pod.
+- Le nouveau Pod s'exécute sur le nœud `master`, le même que le précédent. L'affinité du PV `local-path` vers ce nœud impose ce placement.
+
+![PVC data toujours Bound sans Pod](captures/etape5-pvc-bound-sans-pod.png)
+
+![Page conservée après recréation du Pod](captures/etape5-persistance.png)
+
+Conclusion : contrairement à l'emptyDir (étape 2), les données d'un PVC survivent à la suppression du Pod.
+
+Points de contrôle :
+
+- [x] Le PVC est resté `Bound` pendant que le Pod n'existait plus
+- [x] Le nouveau Pod affiche le même message
+- [x] Il s'exécute sur le même nœud que le Pod précédent
 
 ### Étape 6 : Supprimer le PVC
 _à compléter_
