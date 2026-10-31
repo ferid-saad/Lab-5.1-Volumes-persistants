@@ -284,4 +284,32 @@ Points de contrôle :
    La suppression du PVC entraîne celle du PV et des données. Il faut donc sauvegarder ce qui doit être conservé, vérifier la `reclaimPolicy` et, si besoin, passer le PV en `Retain` avant la suppression.
 
 ## Nettoyage
-_à compléter_
+Suppression du namespace du lab et retour au namespace par défaut :
+
+```bash
+k delete namespace tp-k8s
+k config set-context --current --namespace=default
+k get pv | grep tp-k8s || echo "aucun PV du lab restant"
+```
+
+Résultat : le namespace `tp-k8s` est supprimé et aucun PV du lab ne subsiste. Les PV dynamiques à rétention `Delete` disparaissent avec leurs PVC. Les autres PV du cluster (namespace `elearning`) n'appartiennent pas à ce lab et n'ont pas été touchés.
+
+![Nettoyage du lab](captures/etape-nettoyage.png)
+
+## Conclusion
+
+| Emplacement | Survit au redémarrage du conteneur | Survit à la suppression du Pod | Survit à la suppression du PVC |
+|---|---|---|---|
+| Système de fichiers du conteneur | Non | Non | Non |
+| emptyDir | Oui | Non | Non |
+| PVC (`local-path`, rétention `Delete`) | Oui | Oui | Non |
+
+Ce lab a permis de vérifier que :
+
+- l'emptyDir est lié au cycle de vie du Pod ;
+- un PVC `local-path` est provisionné dynamiquement au premier Pod (`WaitForFirstConsumer`) et ses données survivent à la suppression du Pod ;
+- le PV impose son nœud au Pod, ce qui limite la disponibilité (pas de réplication) ;
+- avec la rétention `Delete`, supprimer le PVC supprime aussi les données ;
+- un PVC en `Pending` se diagnostique avec `k describe pvc` et la lecture des événements.
+
+Difficulté rencontrée : le master (2 CPU, 4 Go de RAM) a été saturé à plusieurs reprises (`soft lockup`, timeouts de l'API), ce qui a ralenti certaines étapes. Un namespace bloqué en `Terminating` à cause de l'API `metrics.k8s.io` a aussi dû être résolu avant de commencer.
