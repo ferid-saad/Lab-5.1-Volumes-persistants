@@ -227,10 +227,61 @@ Points de contrôle :
 - [x] Le volume recréé est vide : la page précédente a été perdue
 
 ### Étape 7 : Diagnostiquer un PVC en Pending
-_à compléter_
+Création volontaire d'un PVC avec une StorageClass qui n'existe pas (`local-pat` au lieu de `local-path`), fichier `pvc-erreur.yaml`.
+
+```bash
+k apply -f pvc-erreur.yaml
+k get pvc data-erreur
+k describe pvc data-erreur | tail -n 5
+```
+
+Résultat :
+
+- Le PVC `data-erreur` reste `Pending`.
+- La section `Events` de `describe` indique que la StorageClass `local-pat` est introuvable : c'est la cause du blocage.
+
+![PVC bloqué : StorageClass introuvable](captures/etape7-erreur.png)
+
+Le champ `storageClassName` d'un PVC n'est plus modifiable après sa création. La correction consiste à supprimer le PVC, corriger le fichier, puis le recréer :
+
+```bash
+k delete pvc data-erreur
+sed -i 's|local-pat$|local-path|' pvc-erreur.yaml
+k apply -f pvc-erreur.yaml
+k get pvc data-erreur
+```
+
+Résultat : le PVC est recréé avec `local-path`. Il reste `Pending`, mais sans erreur : il attend un premier Pod (`WaitForFirstConsumer`).
+
+![PVC corrigé, en attente d'un Pod](captures/etape7-correction-erreur.png)
+
+Méthode de diagnostic d'un PVC en `Pending` :
+
+1. `k get pvc` pour confirmer l'état.
+2. `k describe pvc` et lire `Events`.
+3. Vérifier `k get storageclass` (nom exact de la classe).
+4. Si le PVC est correct et sans erreur, vérifier qu'un Pod l'utilise.
+
+Points de contrôle :
+
+- [x] La StorageClass introuvable a été lue dans les événements
+- [x] Après correction, le PVC n'affiche plus d'erreur (il attend un Pod)
 
 ## Réponses aux questions de réflexion
-_à compléter_
+1. **Pourquoi le fichier de l'emptyDir a-t-il survécu au redémarrage du conteneur mais pas à la suppression du Pod ?**
+   Un emptyDir appartient au Pod, pas au conteneur. Quand le conteneur redémarre, le Pod existe toujours et son volume est conservé. Quand le Pod est supprimé, son emptyDir est supprimé avec lui.
+
+2. **Pourquoi le Pod recréé a-t-il été placé sur le même nœud ?**
+   Le PV créé par `local-path` porte une affinité vers le nœud où se trouvent les données (`master`). Le scheduler doit donc placer tout Pod qui utilise ce PVC sur ce nœud.
+
+3. **Que se passerait-il pour l'application si le nœud hébergeant le volume tombait en panne ?**
+   Les données sont sur le disque de ce seul nœud, sans réplication. Le Pod ne pourrait pas être replanifié ailleurs et resterait indisponible (`Pending`) jusqu'au retour du nœud. Si le disque était perdu, les données le seraient aussi. Pour la haute disponibilité, il faut un stockage répliqué (par exemple Longhorn).
+
+4. **Pourquoi le PVC est-il resté en Terminating tant que le Pod existait ?**
+   Un finalizer de protection (`kubernetes.io/pvc-protection`) empêche de supprimer un PVC utilisé par un Pod. La suppression n'aboutit qu'une fois le Pod supprimé, ce qui évite de retirer son stockage à une application en cours d'exécution.
+
+5. **Quelle précaution prendre avant de supprimer un PVC dont la rétention est Delete ?**
+   La suppression du PVC entraîne celle du PV et des données. Il faut donc sauvegarder ce qui doit être conservé, vérifier la `reclaimPolicy` et, si besoin, passer le PV en `Retain` avant la suppression.
 
 ## Nettoyage
 _à compléter_
