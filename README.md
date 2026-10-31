@@ -184,7 +184,47 @@ Points de contrôle :
 - [x] Il s'exécute sur le même nœud que le Pod précédent
 
 ### Étape 6 : Supprimer le PVC
-_à compléter_
+Suppression du PVC `data` alors que le Pod l'utilise encore, puis suppression du Pod.
+
+```bash
+k delete pvc data --wait=false
+k get pvc
+k delete pod app
+sleep 10
+k get pvc,pv
+sudo ls /var/lib/rancher/k3s/storage/
+```
+
+Résultat :
+
+- Le PVC reste `Terminating` tant que le Pod `app` existe : c'est une protection (`pvc-protection`) qui empêche de supprimer un volume en cours d'utilisation.
+- Après la suppression du Pod, le PVC disparaît. Le PV passe brièvement à l'état `Released`, puis est supprimé automatiquement (rétention `Delete`).
+- Sur le nœud, le dossier `pvc-..._tp-k8s_data` n'existe plus dans `/var/lib/rancher/k3s/storage/` : les données ont été effacées.
+
+![PVC en Terminating tant que le Pod existe](captures/etape6-terminating.png)
+
+![PVC et PV supprimés, dossier effacé du nœud](captures/etape6-supprime.png)
+
+Recréation du PVC et du Pod :
+
+```bash
+k apply -f pvc.yaml
+k apply -f app.yaml
+k wait --for=condition=Ready pod/app --timeout=120s
+k exec app -- ls /usr/share/nginx/html
+```
+
+Résultat : le dossier est vide. Le nouveau PVC est lié à un nouveau PV, et la page `index.html` de l'étape 4 est perdue.
+
+![Volume recréé vide](captures/etape6-volume-vide.png)
+
+Conclusion : avec une rétention `Delete`, supprimer le PVC supprime aussi le PV et les données. La persistance protège des suppressions de Pod, pas de la suppression du PVC.
+
+Points de contrôle :
+
+- [x] Le PVC est resté `Terminating` tant que le Pod existait
+- [x] Après suppression, ni PVC ni PV (ancien) ne subsistaient
+- [x] Le volume recréé est vide : la page précédente a été perdue
 
 ### Étape 7 : Diagnostiquer un PVC en Pending
 _à compléter_
