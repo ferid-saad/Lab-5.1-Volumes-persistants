@@ -105,7 +105,54 @@ Points de contrôle :
 ![Événement WaitForFirstConsumer](captures/etape3-wait.png)
 
 ### Étape 4 : Utiliser le PVC dans un Pod
-_à compléter_
+Pod `app` (nginx:1.26-alpine) qui monte le PVC `data` sur `/usr/share/nginx/html` (fichier `app.yaml`).
+
+```bash
+k apply -f app.yaml
+k get pvc -w
+k get pvc,pv
+k get pod app -o wide
+PV=$(k get pvc data -o jsonpath='{.spec.volumeName}')
+k describe pv $PV | grep -E -A6 "Node Affinity|Source"
+```
+
+Résultat :
+
+- Le PVC `data` passe de `Pending` à `Bound` dès que le Pod `app` est créé (premier consommateur).
+- Un PV `pvc-d5234694-29f0-41a8-b8a3-28c11a28a778` (1Gi, RWO, `local-path`) a été créé automatiquement : c'est le provisionnement dynamique.
+- Le Pod s'exécute sur le nœud `master`.
+- Le PV porte une affinité vers le nœud `master` (`kubernetes.io/hostname`).
+
+![PVC data passe de Pending à Bound](captures/etape4-pvc-bound.png)
+
+![Affinité du PV vers le nœud](captures/etape4-affinite-pv.png)
+
+Écriture d'une page web dans le volume et lecture par nginx :
+
+```bash
+k exec app -- sh -c 'echo "Bonjour, donnee persistante" > /usr/share/nginx/html/index.html'
+k exec app -- wget -qO- http://localhost
+```
+
+Résultat : nginx répond `Bonjour, donnee persistante`.
+
+![Page servie par nginx](captures/etape4-page-nginx.png)
+
+Repérage du dossier sur le nœud qui héberge le Pod :
+
+```bash
+sudo ls -R /var/lib/rancher/k3s/storage/
+```
+
+Résultat : le dossier `pvc-d5234694-29f0-41a8-b8a3-28c11a28a778_tp-k8s_data` existe et contient `index.html`. Avec `local-path`, les données sont donc stockées directement sur le disque du nœud.
+
+![Dossier du volume sur le nœud](captures/etape4-dossier-noeud.png)
+
+Points de contrôle :
+
+- [x] Le PVC est `Bound` à un PV créé automatiquement
+- [x] Le PV porte une affinité vers le nœud du Pod
+- [x] La page est servie par nginx, et `index.html` existe dans le dossier du nœud
 
 ### Étape 5 : Prouver la persistance
 _à compléter_
